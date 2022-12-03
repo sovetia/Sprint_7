@@ -75,7 +75,17 @@ public class OrderTest {
     }
 
     @After
-    @Step("Cancel order. Send PUT request to /api/v1/orders/cancel")
+    @Step("Проверка списка заказов")
+    public void checkOrderList() {
+        Response response = given()
+                .header("Content-type", "application/json")
+                .when()
+                .get("api/v1/orders/track?t="+createOrderResponse.jsonPath().getString("track"))
+                .then()
+                .extract().response();
+        response.then().assertThat().body("order", notNullValue());
+    }
+    @Step("Отмена заказа")
     public void cancelOrder() {
         given()
                 .header("Content-type", "application/json")
