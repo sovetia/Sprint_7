@@ -16,11 +16,6 @@ public class Order {
     public Order() {
     }
 
-    public Order(String comment, List<String> color){
-        this.comment = comment;
-        this.color = color;
-    }
-
     public Order(String firstName, String lastName, String address, String metroStation, String phone, int rentTime, String deliveryDate, String comment, List<String> color) {
         this.firstName = firstName;
         this.lastName = lastName;

@@ -3,7 +3,6 @@ import io.qameta.allure.Step;
 import io.qameta.allure.junit4.DisplayName;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -13,8 +12,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.*;
 
 @RunWith(Parameterized.class)
 public class OrderTest {
@@ -32,7 +30,6 @@ public class OrderTest {
     private String deliveryDate;
     private String comment;
     private List<String> color;
-    private Response createOrderResponse;
 
     public OrderTest(String firstName, String lastName, String address, String metroStation, String phone, int rentTime, String deliveryDate, String comment, List color) {
         this.firstName = firstName;
@@ -56,11 +53,27 @@ public class OrderTest {
     }
 
     @Test
-    @DisplayName("Create order")
-    @Description("Проверка Создания заказа")
+    @DisplayName("Яндекс Самокат. Создать заказ")
+    @Description("Проверь, что когда создаёшь заказ: 1. можно указать один из цветов — BLACK или GREY; можно указать оба цвета; можно совсем не указывать цвет; 2. тело ответа содержит track; 3. Проверь, что в тело ответа возвращается список заказов.")
     public void checkOrderCreation() {
+        //Шаг 1. Создать заказ
+        Response response = createOrder();
+        String track = response.jsonPath().getString("track");
+
+        //Шаг 2. Проверить, что тело ответа содержит track
+        checkTrack(response);
+
+        //Шаг 3. Проверить, что в тело ответа возвращается список заказов
+        checkOrderList(track);
+
+        //Шаг 4. Отменить заказ
+        cancelOrder(track);
+    }
+
+    @Step("Шаг 1. Создать заказ")
+    public Response createOrder(){
         Order order = new Order(firstName, lastName, address, metroStation, phone, rentTime, deliveryDate, comment, color);
-        createOrderResponse = given()
+        Response response = given()
                 .header("Content-type", "application/json")
                 .and()
                 .body(order)
@@ -69,28 +82,31 @@ public class OrderTest {
                 .then()
                 .extract().response();
 
-        createOrderResponse.then().assertThat().body("track", notNullValue())
-                .and()
-                .statusCode(201);
+        response.then().assertThat().statusCode(201);
+        return response;
+    }
+    @Step("Шаг 2. Проверить, что тело ответа содержит track")
+    public void checkTrack(Response response){
+        response.then().assertThat().body("track", notNullValue());
     }
 
-    @After
-    @Step("Проверка списка заказов")
-    public void checkOrderList() {
+    @Step("Шаг 3. Проверить, что в тело ответа возвращается список заказов")
+    public void checkOrderList(String track) {
         Response response = given()
                 .header("Content-type", "application/json")
                 .when()
-                .get("api/v1/orders/track?t="+createOrderResponse.jsonPath().getString("track"))
+                .get("api/v1/orders/track?t="+track)
                 .then()
                 .extract().response();
         response.then().assertThat().body("order", notNullValue());
     }
-    @Step("Отмена заказа")
-    public void cancelOrder() {
+
+    @Step("Шаг 4. Отменить заказ")
+    public void cancelOrder(String track) {
         given()
                 .header("Content-type", "application/json")
                 .when()
-                .put("/api/v1/orders/cancel?track=" + createOrderResponse.jsonPath().getString("track"))
+                .put("/api/v1/orders/cancel?track=" + track)
                 .then().assertThat().body("ok", equalTo(true));
     }
 }
